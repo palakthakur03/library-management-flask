@@ -1,7 +1,6 @@
 import random
 from flask import render_template, url_for, Flask, request, redirect, json, jsonify, session, flash
-from flask_mysqldb import MySQL 
-import MySQLdb
+import pymysql
 import requests
 from werkzeug.utils import secure_filename
 import re
@@ -10,9 +9,10 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 
+# ---------------- EMAIL OTP ----------------
 def send_otp_email(receiver_email, otp):
-    sender_email = "palakthakur9672@gmail.com"
-    app_password = "asbe ried jtuj wxsw"
+    sender_email = os.getenv("EMAIL_USER")
+    app_password = os.getenv("EMAIL_PASS")
 
     subject = "OTP Verification - The Knowledge Hub Library"
     body = f"""
@@ -43,35 +43,38 @@ The Knowledge Hub Library
         return False
 
 
-import os
-from flask import Flask
-from flask_mysqldb import MySQL
-
+# ---------------- FLASK APP ----------------
 app = Flask(__name__)
-
-# MySQL Configuration (DEPLOYMENT SAFE)
-app.config['MYSQL_HOST'] = os.getenv('MYSQLHOST', 'localhost')
-app.config['MYSQL_USER'] = os.getenv('MYSQLUSER', 'root')
-app.config['MYSQL_PASSWORD'] = os.getenv('MYSQLPASSWORD', '')
-app.config['MYSQL_DB'] = os.getenv('MYSQLDATABASE', 'library_management')
-app.config['MYSQL_PORT'] = int(os.getenv('MYSQLPORT', 3306))
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-
-mysql = MySQL(app)
 app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key')
 
 
+# ---------------- MYSQL (PyMySQL) ----------------
+def get_db_connection():
+    return pymysql.connect(
+        host=os.getenv('MYSQLHOST', 'localhost'),
+        user=os.getenv('MYSQLUSER', 'root'),
+        password=os.getenv('MYSQLPASSWORD', ''),
+        database=os.getenv('MYSQLDATABASE', 'library_management'),
+        port=int(os.getenv('MYSQLPORT', 3306)),
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
+
+# ---------------- FILE UPLOAD ----------------
 UPLOAD_FOLDER = os.path.join(app.root_path, 'static')
 UPLOAD_FOLDER_USER = 'static/uploads'
 app.config['UPLOAD_FOLDER_USER'] = UPLOAD_FOLDER_USER
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+
 
 
 # ---------------- VALIDATION HELPERS ----------------
@@ -93,7 +96,8 @@ def owner():
 # ========== STAFF ==========
 @app.route('/add_staff', methods=['GET', 'POST'])
 def add_staff():
-    cur = mysql.connection.cursor()
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     if request.method == 'POST':
         name = request.form.get("name").strip()
@@ -116,7 +120,7 @@ def add_staff():
             "INSERT INTO signup_staff(name, phone, password) VALUES (%s, %s, %s)",
             (name, phone, password)
         )
-        mysql.connection.commit()
+        conn.commit()
         cur.close()
 
         flash("✅ Staff added successfully!", "success")
@@ -129,7 +133,9 @@ def add_staff():
 def view_staff():
     search = request.args.get('search', '').strip()
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
+
 
     if search:
         cur.execute("""
@@ -154,7 +160,8 @@ def view_staff():
 def search_staff():
     query = request.args.get('q', '').strip()
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     if query:
         cur.execute("""
@@ -178,7 +185,8 @@ def admin_dashboard():
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     cur.execute("SELECT COUNT(*) AS total_books FROM books")
     total_books = cur.fetchone()['total_books']
@@ -215,7 +223,8 @@ def admin_settings():
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     if request.method == 'POST':
         name = request.form.get('name')
@@ -252,7 +261,7 @@ def admin_settings():
             SET name=%s, mailid=%s, phone=%s, photo=%s 
             WHERE admin_id=%s
         """, (name, mailid, phone, photo_filename, session['admin_id']))
-        mysql.connection.commit()
+        conn.commit()
         cur.close()
 
         flash("✅ Profile updated successfully!", "success")
@@ -278,7 +287,8 @@ def admin_login():
             flash("⚠️ Enter a valid 10-digit phone number.", "danger")
             return redirect(url_for('admin_login'))
 
-        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        conn = get_db_connection()
+        cur = conn.cursor()
         cur.execute("SELECT * FROM signup_staff WHERE phone=%s AND password=%s", (phone, password))  
         result = cur.fetchone()
         cur.close()
@@ -298,7 +308,8 @@ def overview():
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     # Total Books
     cur.execute("SELECT COUNT(*) AS total FROM books")
@@ -338,7 +349,8 @@ def forgot_password():
         if 'otp_sent' not in session:
             phone = request.form.get('phone')
 
-            cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+            conn = get_db_connection()
+            cur = conn.cursor()
             cur.execute("SELECT * FROM signup_staff WHERE phone=%s", [phone])
             user = cur.fetchone()
             cur.close()
@@ -399,12 +411,13 @@ def reset_password():
             flash('❌ Passwords do not match!', 'error')
             return render_template('reset_password.html')
 
-        cur = mysql.connection.cursor()
+        conn = get_db_connection()
+        cur = conn.cursor()
         cur.execute(
             "UPDATE signup_staff SET password=%s WHERE admin_id=%s",
             (new_password, session['reset_admin_id'])
         )
-        mysql.connection.commit()
+        conn.commit()
         cur.close()
 
         # 🔥 CLEAR OTP SESSION
@@ -430,13 +443,14 @@ def change_password():
         new_pass = request.form.get('new_password')
         admin_id = session['admin_id']
 
-        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        conn = get_db_connection()
+        cur = conn.cursor()
         cur.execute("SELECT password FROM signup_staff WHERE admin_id=%s", [admin_id])
         result = cur.fetchone()
 
         if result and current_pass == result['password']:
             cur.execute("UPDATE signup_staff SET password=%s WHERE admin_id=%s", (new_pass, admin_id))
-            mysql.connection.commit()
+            conn.commit()
             flash("✅ Password changed successfully!", "success")   
         else:
             flash("❌ Incorrect current password!", "danger")
@@ -449,7 +463,8 @@ def add_book():
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     # ✅ Fetch all admins, genres, and only shelves that are NOT full
     cur.execute("SELECT admin_id FROM signup_staff")
@@ -556,7 +571,7 @@ def add_book():
             genre_id = existing_genre['genre_id']
         else:
             cur.execute("INSERT INTO genre (genre_name) VALUES (%s)", (genre_name,))
-            mysql.connection.commit()
+            conn.commit()
             genre_id = cur.lastrowid
 
         # --- ✅ Normalize Shelf Name ---
@@ -583,7 +598,7 @@ def add_book():
                 "INSERT INTO shelf (shelf_name, genre_id, total_count, capacity) VALUES (%s, %s, %s, %s)",
                 (shelf_name, genre_id, 0, 10)
             )
-            mysql.connection.commit()
+            conn.commit()
             shelf_id = cur.lastrowid
             total_count = 0
             capacity = 10
@@ -612,7 +627,7 @@ def add_book():
             new_total = capacity  # Safety cap
 
         cur.execute("UPDATE shelf SET total_count = %s WHERE shelf_id = %s", (new_total, shelf_id))
-        mysql.connection.commit()
+        conn.commit()
 
         cur.close()
         flash("Book added successfully!", "success")
@@ -626,7 +641,8 @@ def update_book(book_id):
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     # helper: normalize shelf name (same as add_book)
     def normalize_shelf_name(raw):
@@ -702,7 +718,7 @@ def update_book(book_id):
             genre_id = existing_genre['genre_id']
         else:
             cur.execute("INSERT INTO genre (genre_name) VALUES (%s)", (genre_name,))
-            mysql.connection.commit()
+            conn.commit()
             genre_id = cur.lastrowid
 
         # --- Find or create target shelf ---
@@ -714,7 +730,7 @@ def update_book(book_id):
                 "INSERT INTO shelf (shelf_name, genre_id, total_count, capacity) VALUES (%s, %s, %s, %s)",
                 (shelf_name, genre_id, 0, 10)
             )
-            mysql.connection.commit()
+            conn.commit()
             target_shelf_id = cur.lastrowid
             target_total = 0
             target_capacity = 10
@@ -793,9 +809,9 @@ def update_book(book_id):
                 # add to new shelf
                 cur.execute("UPDATE shelf SET total_count = total_count + %s WHERE shelf_id = %s", (copies, target_shelf_id))
 
-            mysql.connection.commit()
+            conn.commit()
         except Exception as e:
-            mysql.connection.rollback()
+            conn.rollback()
             cur.close()
             flash("An error occurred while updating the book: " + str(e), "danger")
             return redirect(url_for('update_book', book_id=book_id))
@@ -806,7 +822,7 @@ def update_book(book_id):
 
     except Exception as e:
         try:
-            mysql.connection.rollback()
+            conn.rollback()
         except:
             pass
         cur.close()
@@ -823,7 +839,8 @@ def view_books():
     per_page = 10  # Number of items per page
 
     # ✅ Use DictCursor consistently
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     # Get all book names
     cur.execute("SELECT book_name FROM books")
@@ -877,7 +894,8 @@ def manage_books():
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     # Pagination setup
     per_page = 10  # number of books per page
@@ -909,10 +927,23 @@ def manage_books():
 
 @app.route('/delete_book/<int:book_id>', methods=['GET', 'POST'])
 def delete_book(book_id):
-    cur = mysql.connection.cursor()
-    cur.execute("DELETE FROM books WHERE book_id = %s", (book_id,))
-    mysql.connection.commit()
-    cur.close()
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("DELETE FROM books WHERE book_id = %s", (book_id,))
+        conn.commit()
+        flash("✅ Book deleted successfully!", "success")
+
+    except Exception as e:
+        conn.rollback()
+        print("DELETE BOOK ERROR:", e)
+        flash("❌ Failed to delete book", "danger")
+
+    finally:
+        cur.close()
+        conn.close()
+
     return redirect(url_for('manage_books'))
 
 @app.route('/member_records', methods=['GET', 'POST'])
@@ -920,7 +951,8 @@ def member_records():
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
     members = []
     member_info = None
     show_form = True
@@ -981,7 +1013,7 @@ def member_records():
                         INSERT INTO member_records (name, phone, email, joining_date, address, admin_id, photo_path)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """, (name, phone, email, joining_date, address, admin_id, photo_db_path))
-            mysql.connection.commit()
+            conn.commit()
             new_member_id = cur.lastrowid
             session['member_id'] = new_member_id
             flash(f"✅ New member '{name}' added successfully!", "success")
@@ -1018,7 +1050,8 @@ def update_member(member_id):
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
     cur.execute("SELECT * FROM member_records WHERE member_id=%s", (member_id,))
     member = cur.fetchone()
 
@@ -1045,7 +1078,7 @@ def update_member(member_id):
             SET name=%s, phone=%s, email=%s, joining_date=%s, address=%s, admin_id=%s
             WHERE member_id=%s
         """, (name, phone, email, joining_date, address, admin_id, member_id))
-        mysql.connection.commit()
+        conn.commit()
         flash('✅ Member updated successfully!', 'success')
         return redirect(url_for('member_records'))
 
@@ -1057,11 +1090,26 @@ def delete_member(member_id):
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor()
-    cur.execute("DELETE FROM member_records WHERE member_id=%s", (member_id,))
-    mysql.connection.commit()
-    cur.close()
-    flash('✅ Member deleted successfully!', 'success')
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            "DELETE FROM member_records WHERE member_id = %s",
+            (member_id,)
+        )
+        conn.commit()
+        flash('✅ Member deleted successfully!', 'success')
+
+    except Exception as e:
+        conn.rollback()
+        print("DELETE MEMBER ERROR:", e)
+        flash('❌ Failed to delete member', 'danger')
+
+    finally:
+        cur.close()
+        conn.close()
+
     return redirect(url_for('member_records'))
 
 # ========== BORROWING ==========
@@ -1071,7 +1119,8 @@ def all_books():
         return redirect(url_for('admin_login'))
 
     search = request.args.get('search', '')
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
     if search:
         cur.execute("SELECT * FROM books WHERE book_name LIKE %s", ('%' + search + '%',))
     else:
@@ -1090,7 +1139,8 @@ def confirm_borrow():
         flash(" No books were selected for borrowing.", "error")
         return redirect(url_for('all_books'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
     placeholders = ', '.join(['%s'] * len(selected_book_ids))
     query = f"SELECT book_id, book_name, author, amount FROM books WHERE book_id IN ({placeholders})"
     cur.execute(query, selected_book_ids)
@@ -1117,7 +1167,8 @@ def finalize_borrow():
     fine = (duration - 30) * fine_per_day if duration > 30 else 0
 
     book_total = 0
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     for i in range(len(book_ids)):
         book_id = book_ids[i]
@@ -1144,7 +1195,7 @@ def finalize_borrow():
         cur.execute("UPDATE books SET copies = copies - 1 WHERE book_id = %s", (book_id,))
 
     grand_total = book_total + fine
-    mysql.connection.commit()
+    conn.commit()
     cur.close()
 
     flash(f"""
@@ -1163,7 +1214,8 @@ def borrow_records():
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     current_date = date.today().strftime('%Y-%m-%d')
     start_date = request.args.get('start_date', current_date)
@@ -1242,7 +1294,8 @@ def mark_return(borrow_id):
     if 'admin_id' not in session:
         return jsonify({'success': False, 'error': 'Unauthorized access'}), 403
 
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    conn = get_db_connection()
+    cur = conn.cursor()
 
     # 🔹 Fetch borrow record details
     cur.execute("""
@@ -1274,7 +1327,7 @@ def mark_return(borrow_id):
         WHERE borrow_id = %s
     """, (fine, borrow_id))
 
-    mysql.connection.commit()
+    conn.commit()
     cur.close()
 
     return jsonify({'success': True, 'fine': fine})
