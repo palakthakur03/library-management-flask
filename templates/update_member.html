@@ -1,0 +1,179 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block title %}Edit Member{% endblock %}
+
+{% block content %}
+<div class="content-section">
+    <h2 class="section-title">✏️ Edit Member</h2>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }} text-center">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Centered Form Card -->
+    <div class="form-container">
+        <form method="POST" id="editMemberForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name">🧑 Name <span class="text-danger">*</span></label>
+                    <input type="text" id="name" name="name" class="form-control" value="{{ member.name }}" placeholder="Enter full name" maxlength="30" required>
+                    <small class="text-danger field-error" id="nameError"></small>
+                </div>
+                <div class="form-group">
+                    <label for="phone">📞 Phone <span class="text-danger">*</span></label>
+                    <input type="text" id="phone" name="phone" class="form-control" value="{{ member.phone }}" placeholder="Enter 10-digit mobile" maxlength="10" required>
+                    <small class="text-danger field-error" id="phoneError"></small>
+                </div>
+                <div class="form-group">
+                    <label for="email">📧 Email <span class="text-danger">*</span></label>
+                    <input type="text" id="email" name="email" class="form-control" value="{{ member.email }}" placeholder="Enter email" maxlength="30" required>
+                    <small class="text-danger field-error" id="emailError"></small>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="joining_date">📅 Joined Date <span class="text-danger">*</span></label>
+                    <input type="date" id="joining_date" name="joining_date" class="form-control" value="{{ member.joining_date }}" max="{{ current_date }}" required>
+                    <small class="text-danger field-error" id="dateError"></small>
+                </div>
+                <div class="form-group">
+                    <label for="address">🏠 Address</label>
+                    <textarea id="address" name="address" class="form-control" rows="2" maxlength="30" placeholder="Enter full address">{{ member.address }}</textarea>
+                    <small class="text-danger field-error" id="addressError"></small>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions" style="display:flex; gap:10px; justify-content:center;">
+                <button type="submit" class="btn btn-primary">💾 Update Member</button>
+                <a href="{{ url_for('member_records') }}" class="btn btn-primary">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ✅ JS Validation -->
+<script>
+// Max today for joining date
+document.getElementById("joining_date").max = new Date().toISOString().split("T")[0];
+
+// Utility to show error
+function showError(id, message) {
+    document.getElementById(id).textContent = message;
+}
+
+// Utility to clear error
+function clearError(id) {
+    document.getElementById(id).textContent = '';
+}
+
+// Instant input restrictions
+document.getElementById("name").addEventListener("input", function() {
+    this.value = this.value.replace(/[^a-zA-Z\s]/g, '').slice(0,30);
+    clearError('nameError');
+});
+
+document.getElementById("phone").addEventListener("input", function() {
+    this.value = this.value.replace(/\D/g, '').slice(0,10);
+    clearError('phoneError');
+});
+
+document.getElementById("address").addEventListener("input", function() {
+    this.value = this.value.slice(0,30);
+    clearError('addressError');
+});
+
+document.getElementById("email").addEventListener("input", function() {
+    this.value = this.value.slice(0,30);
+    clearError('emailError');
+});
+
+// Validation on submit
+document.getElementById("editMemberForm").addEventListener("submit", function(e) {
+    let valid = true;
+
+    const name = document.getElementById("name").value.trim();
+    if (!/^[a-zA-Z\s]{1,30}$/.test(name)) {
+        showError('nameError', 'Name can contain only alphabets and max 30 characters.');
+        valid = false;
+    }
+
+    const phone = document.getElementById("phone").value.trim();
+    if (!/^\d{10}$/.test(phone)) {
+        showError('phoneError', 'Phone must be exactly 10 digits.');
+        valid = false;
+    }
+
+    const email = document.getElementById("email").value.trim();
+    const emailPattern = /^[^@]+@[^@]+\.[^@]+$/;
+    if (!emailPattern.test(email)) {
+        showError('emailError', 'Please enter a valid email address.');
+        valid = false;
+    }
+
+    const address = document.getElementById("address").value.trim();
+    if (address.length > 30) {
+        showError('addressError', 'Address can be maximum 30 characters.');
+        valid = false;
+    }
+
+    const joining_date = document.getElementById("joining_date").value;
+    if (new Date(joining_date) > new Date()) {
+        showError('dateError', 'Joining date cannot be in the future.');
+        valid = false;
+    }
+
+    if (!valid) e.preventDefault();
+});
+</script>
+
+<style>
+/* Centered Form Card */
+.form-container {
+    width: 75%;
+    margin: 20px auto;
+    background: #fff;
+    padding: 30px 35px;
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+/* Form Fields */
+.form-group { display: flex; flex-direction: column; margin-bottom: 20px; }
+.form-row { display: flex; gap: 20px; flex-wrap: wrap; }
+.form-group input,
+.form-group textarea { padding: 10px 14px; border-radius: 8px; border: 1px solid #ccc; width: 100%; transition: all 0.3s; }
+.form-group input:focus,
+.form-group textarea:focus { outline: 2px solid #355b81; border-color: #6c757d; }
+
+/* Error text */
+.field-error { font-size: 0.85rem; margin-top: 4px; }
+
+/* Buttons - unified style */
+.btn-primary { 
+    background: #5067b3; 
+    color: #fff; 
+    border: none; 
+    padding: 10px 18px; 
+    border-radius: 6px; 
+    cursor: pointer; 
+    transition: 0.3s; 
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+.btn-primary:hover { 
+    background: #8597a8; 
+    color: #fff; 
+}
+
+/* Title */
+.section-title { text-align: center; font-size: 1.8rem; margin-bottom: 25px; color: #333; }
+</style>  
+{% endblock %}

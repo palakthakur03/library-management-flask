@@ -1,0 +1,235 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block title %}Borrow Records{% endblock %}
+
+{% block content %}
+<div class="content-section">
+  <h2 class="section-title">📚 Borrow Records</h2>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="alert alert-{{ category }} text-center">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <!-- 🔍 Filter Form -->
+  <form class="filter-form" action="/borrow_records" method="POST" 
+        style="display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+
+    <div class="form-group" style="display:flex; flex-direction:column; width:150px;">
+      <label for="start_date" style="font-weight:500;">Start Date</label>
+      <input type="date" id="start_date" name="start_date"
+             value="{{ start_date if start_date else current_date }}" 
+             max="{{ current_date }}" required
+             style="padding:5px; border:1px solid #ccc; border-radius:5px;">
+    </div>
+
+    <div class="form-group" style="display:flex; flex-direction:column; width:150px;">
+      <label for="end_date" style="font-weight:500;">End Date</label>
+      <input type="date" id="end_date" name="end_date"
+             value="{{ end_date if end_date else current_date }}" 
+             max="{{ current_date }}" required
+             style="padding:5px; border:1px solid #ccc; border-radius:5px;">
+    </div>
+
+    <button type="submit" 
+            class="btn-primary" 
+            style="background:#355b81; color:white; padding:7px 14px; border:none; border-radius:6px; cursor:pointer;">
+            🔍 Filter
+    </button>
+
+    <!-- 🔹 Overdue Filter -->
+    <!-- 🔹 Overdue Filter -->
+<a href="{{ url_for('borrow_records', filter='overdue', start_date=start_date, end_date=end_date) }}"
+   class="filter-btn {% if filter_type == 'overdue' %}active-overdue{% endif %}">
+   ⚠️ Overdue
+</a>
+
+<!-- 🔹 All Filter -->
+<a href="{{ url_for('borrow_records', filter='all', start_date=start_date, end_date=end_date) }}"
+   class="filter-btn {% if filter_type == '' or filter_type == 'all' %}active-all{% endif %}">
+   📘 All
+</a>
+
+
+  </form>
+
+  <!-- 📖 Borrow Table -->
+  <table id="booksTable" style="width:100%; border-collapse: collapse; text-align:center;">
+    <thead style="background:#355b81; color:white;">
+      <tr>
+        <th>Member Name</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Book Name</th>
+        <th>Author</th>
+        <th>Borrow Date</th>
+        <th>Return Date</th>
+        <th>Duration</th>
+        <th>Total Amount</th>
+        <th>Status</th>
+        <th>Fine</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for book in books %}
+      <tr id="row-{{ book.borrow_id }}" {% if book.status == 'Returned' %}style="background:#d4edda;"{% elif book.status == 'Borrowed' %}style="background:#fff3cd;"{% endif %}>
+        <td>{{ book.name }}</td>
+        <td>{{ book.phone }}</td>
+        <td>{{ book.email }}</td>
+        <td>{{ book.book_name }}</td>
+        <td>{{ book.author }}</td>
+        <td>{{ book.borrow_date }}</td>
+        <td>{{ book.return_date }}</td>
+        <td>{{ book.duration }} days</td>
+        <td>₹{{ book.total_amount }}</td>
+        <td id="status-{{ book.borrow_id }}">
+          {% if book.status == 'Returned' %}
+            ✅ Returned
+          {% else %}
+            🕒 Borrowed
+            <button type="button" class="mark-return-btn" data-borrow-id="{{ book.borrow_id }}" 
+                    style="background:#28a745; color:white; border:none; padding:5px 8px; border-radius:4px; cursor:pointer;">
+              Mark Returned
+            </button>
+
+          {% endif %}
+        </td>
+        <td id="fine-{{ book.borrow_id }}">
+          {% if book.fine > 0 %}
+            <b style="color:red;">₹{{ book.fine }}</b>
+          {% elif book.overdue_days > 0 and book.status != 'Returned' %}
+            <b style="color:red;">Overdue {{ book.overdue_days }} days</b>
+          {% else %}
+            0
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+// Mark Returned functionality
+document.addEventListener('DOMContentLoaded', function() {
+  // Add event listeners to all mark return buttons
+  document.querySelectorAll('.mark-return-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const borrowId = this.getAttribute('data-borrow-id');
+      markReturned(borrowId, this);
+    });
+  });
+});
+
+function markReturned(borrowId, buttonElement) {
+  // Show loading state
+  const originalText = buttonElement.textContent;
+  buttonElement.textContent = 'Processing...';
+  buttonElement.disabled = true;
+
+  // Send AJAX request
+  fetch(`/mark_return/${borrowId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Update the status cell
+      const statusCell = document.getElementById(`status-${borrowId}`);
+      statusCell.innerHTML = '✅ Returned';
+      
+      // Update the fine cell
+      const fineCell = document.getElementById(`fine-${borrowId}`);
+      if (data.fine > 0) {
+        fineCell.innerHTML = `<b style="color:red;">₹${data.fine}</b>`;
+      } else {
+        fineCell.innerHTML = '0';
+      }
+      
+      // Update row background color
+      const row = document.getElementById(`row-${borrowId}`);
+      row.style.background = '#d4edda';
+      
+      // No popup alert - silent update
+    } else {
+      console.error('Error:', data.error);
+      // Reset button on error
+      buttonElement.textContent = originalText;
+      buttonElement.disabled = false;
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    // Reset button on error
+    buttonElement.textContent = originalText;
+    buttonElement.disabled = false;
+  });
+}
+</script>
+
+<style>
+.content-section {
+  padding: 20px;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+.filter-form {
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#booksTable {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#booksTable th, #booksTable td {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+}
+
+#booksTable tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+#booksTable tr:hover {
+  background-color: #e9ecef;
+}
+
+.mark-return-btn:hover {
+  background: #218838 !important;
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+.filter-btn {
+  background: #6c757d;
+  color: white;
+  padding: 7px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.filter-btn.active-overdue { background: #dc3545; }
+.filter-btn.active-all { background: #28a745; }
+
+
+
+
+</style>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "admin_dashboard.html" %}
+
+{% block title %}Overview - The Knowledge Hub Library{% endblock %}
+
+{% block content %}
+<style>
+/* --- Overview Page Styling --- */
+.overview-wrapper { max-width: 100%; padding: 0; margin: 0; }
+
+.overview-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px;
+    border-radius: 15px;
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    margin-bottom: 30px;
+}
+.overview-header h1 { font-size: 2.5em; font-weight: 700; margin-bottom: 10px; }
+.overview-header p { font-size: 1.15em; opacity: 0.9; }
+
+/* --- Stats --- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    margin-bottom: 35px;
+}
+.stat-card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: all 0.4s ease;
+    border-left: 6px solid;
+}
+.stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+}
+.stat-icon { font-size: 3em; margin-bottom: 15px; }
+.stat-number { font-size: 2.5em; font-weight: 700; color: #333; margin-bottom: 8px; }
+.stat-label { font-weight: 600; color: #666; letter-spacing: 1px; text-transform: uppercase; }
+
+.books { border-color: #667eea; color: #667eea; }
+.issued { border-color: #f093fb; color: #f093fb; }
+.members { border-color: #4facfe; color: #4facfe; }
+.staff { border-color: #43e97b; color: #43e97b; }
+
+/* --- Quick Actions --- */
+.quick-actions-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+.action-card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+.action-card h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.action-card h2::before {
+    content: '';
+    width: 5px; height: 25px;
+    background: #667eea;
+    border-radius: 3px;
+}
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.action-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white; text-decoration: none; border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102,126,234,0.3);
+}
+.action-btn:hover {
+    transform: translateX(8px);
+    box-shadow: 0 6px 25px rgba(102,126,234,0.5);
+}
+
+/* --- Records Section --- */
+.records-section {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+.records-section h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.records-section h2::before { content: "📊"; font-size: 1.2em; }
+
+.records-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+}
+.record-link {
+    display: block;
+    text-align: center;
+    padding: 18px;
+    background: #f8f9ff;
+    color: #667eea;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+.record-link:hover {
+    background: #667eea;
+    color: white;
+    border-color: #764ba2;
+    transform: scale(1.05);
+}
+</style>
+
+<div class="overview-wrapper">
+    <div class="overview-header">
+        <h1>📚 The Knowledge Hub Library</h1>
+        <p>Admin Dashboard • Statistics • Quick Navigation</p>
+    </div>
+
+    <!-- --- Stats Overview --- -->
+    <div class="stats-grid">
+        <div class="stat-card books">
+            <span class="stat-icon">📖</span>
+            <div class="stat-number">{{ total_books }}</div>
+            <div class="stat-label">Total Books</div>
+        </div>
+
+        <div class="stat-card issued">
+            <span class="stat-icon">📤</span>
+            <div class="stat-number">{{ issued_books }}</div>
+            <div class="stat-label">Books Issued</div>
+        </div>
+
+        <div class="stat-card members">
+            <span class="stat-icon">👥</span>
+            <div class="stat-number">{{ total_members }}</div>
+            <div class="stat-label">Members</div>
+        </div>
+
+        <div class="stat-card staff">
+            <span class="stat-icon">👨‍💼</span>
+            <div class="stat-number">{{ total_staff }}</div>
+            <div class="stat-label">Staff Members</div>
+        </div>
+    </div>
+
+    <!-- --- Quick Actions --- -->
+    <div class="quick-actions-section">
+        <div class="action-card">
+            <h2>📚 Books Management</h2>
+            <div class="action-buttons">
+                <a href="{{ url_for('add_book') }}" class="action-btn">➕ Add New Book</a>
+                <a href="{{ url_for('manage_books') }}" class="action-btn">📋 Manage Books</a>
+                <a href="{{ url_for('view_books') }}" class="action-btn">📘 View All Books</a>
+            </div>
+        </div>
+
+        <div class="action-card">
+            <h2>👥 Members Management</h2>
+            <div class="action-buttons">
+                <a href="{{ url_for('member_records') }}" class="action-btn">👤 Member Records</a>
+                <a href="{{ url_for('borrow_records') }}" class="action-btn">📊 Borrow Records</a>
+                <a href="{{ url_for('confirm_borrow') }}" class="action-btn">✅ Confirm Borrow</a>
+            </div>
+        </div>
+
+        <div class="action-card">
+            <h2>👨‍💼 Staff Management</h2>
+            <div class="action-buttons">
+                <a href="{{ url_for('add_staff') }}" class="action-btn">➕ Add Staff</a>
+                <a href="{{ url_for('view_staff') }}" class="action-btn">📋 View Staff</a>
+            </div>
+        </div>
+
+        <div class="action-card">
+            <h2>⚙️ Admin Controls</h2>
+            <div class="action-buttons">
+                <a href="{{ url_for('admin_dashboard') }}" class="action-btn">📊 Dashboard</a>
+                <a href="{{ url_for('admin_settings') }}" class="action-btn">⚙️ Settings</a>
+                <a href="{{ url_for('change_password') }}" class="action-btn">🔑 Change Password</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- --- Quick Records --- -->
+    <div class="records-section">
+        <h2>Quick Access Records</h2>
+        <div class="records-grid">
+            <a href="{{ url_for('view_books') }}" class="record-link">📘 All Books Catalog</a>
+            <a href="{{ url_for('borrow_records') }}" class="record-link">📊 Borrow Records</a>
+            <a href="{{ url_for('member_records') }}" class="record-link">👥 Member Records</a>
+            <a href="{{ url_for('view_staff') }}" class="record-link">👨‍💼 Staff Records</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

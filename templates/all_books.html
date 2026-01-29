@@ -1,0 +1,165 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block title %}All Available Books{% endblock %}
+
+{% block content %}
+<style>
+  /* DataTable look - pure CSS */
+  .datatable-container {
+    width: 95%;
+    margin: 30px auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 20px;
+  }
+
+  .datatable-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+
+  .datatable-header h2 {
+    color: #233cde;
+    font-size: 1.4em;
+    font-weight: bold;
+  }
+
+  .search-box input[type="text"] {
+    padding: 7px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 260px;
+    font-size: 1em;
+  }
+
+  .search-box button {
+    padding: 7px 14px;
+    border: none;
+    border-radius: 6px;
+    background-color: #2054fe;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .search-box button:hover {
+    background-color: #1e186f;
+  }
+
+  .datatable {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #ddd;
+    overflow: hidden;
+    border-radius: 8px;
+  }
+
+  .datatable th, .datatable td {
+    text-align: center;
+    padding: 12px 10px;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .datatable th {
+    background-color: #2054fe;
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .datatable tr:nth-child(even) { background-color: #f9f9f9; }
+  .datatable tr:hover { background-color: #eef5ff; }
+
+  .submit {
+    padding: 10px 20px;
+    background-color: #233cde;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .submit:hover { background-color: #1e186f; }
+
+  .out-of-stock { color: red; font-weight: bold; }
+  .low-stock { color: orange; font-weight: bold; }
+
+  .datatable-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+
+  .table-footer {
+    margin-top: 20px;
+    text-align: center;
+  }
+</style>
+
+<div class="datatable-container">
+  <div class="datatable-header">
+    <h2>📚 All Available Books</h2>
+
+    <!-- Search Box -->
+    <div class="search-box">
+      <form method="GET" action="{{ url_for('all_books') }}">
+        <input type="text" name="search" placeholder="Search by book name" value="{{ request.args.get('search', '') }}">
+        <button type="submit">Search</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <form method="POST" action="{{ url_for('confirm_borrow') }}" id="borrowForm">
+    <div class="datatable-scroll">
+      <table class="datatable">
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Book ID</th>
+            <th>Book Name</th>
+            <th>Author</th>
+            <th>Genre Name</th>
+            <th>Copies</th>
+            <th>Amount</th>
+            <th>Shelf Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for book in books %}
+          <tr>
+            <td>
+              {% if book.copies == 0 %}
+                <span class="out-of-stock">Out of Stock</span>
+              {% elif book.copies <= 2 %}
+                <span class="low-stock">⚠️ Low Stock ({{ book.copies }} left)</span><br>
+                <input type="checkbox" name="selected_books" value="{{ book.book_id }}">
+              {% else %}
+                <input type="checkbox" name="selected_books" value="{{ book.book_id }}">
+              {% endif %}
+            </td>
+            <td>{{ book.book_id }}</td>
+            <td>{{ book.book_name }}</td>
+            <td>{{ book.author }}</td>
+            <td>{{ book.genre_name }}</td>
+            <td>{{ book.copies }}</td>
+            <td>{{ book.amount }}</td>
+            <td>{{ book.shelf_name }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-footer">
+      <button type="submit" class="submit">Borrow Books</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

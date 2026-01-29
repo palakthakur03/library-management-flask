@@ -1,0 +1,345 @@
+{% extends 'admin_dashboard.html' %}
+{% block title %}Edit Book{% endblock %}
+{% block content %}
+<div id="edit-book" class="content-section {% if active_section == 'edit_book' %}active{% endif %}">
+    <h2 class="section-title"><span class="title-icon">✏️</span> Edit Book</h2>
+
+    <div class="form-container">
+        <form id="editBookForm" method="POST" action="{{ url_for('update_book', book_id=book.book_id) }}">
+
+            <!-- Book Name & Author -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="book_name">📖 Book Name <span class="text-danger">*</span></label>
+                    <input type="text" id="book_name" name="book_name" value="{{ book.book_name }}" placeholder="Enter book name (max 100 characters)" required maxlength="100">
+                    <div class="char-count">
+                        <span id="bookNameCount">0</span>/100 characters
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="author">✍️ Author <span class="text-danger">*</span></label>
+                    <input type="text" id="author" name="author" value="{{ book.author }}" placeholder="Enter author name (max 50 characters)" required maxlength="50">
+                    <div class="char-count">
+                        <span id="authorCount">0</span>/50 characters
+                    </div>
+                </div>
+            </div>
+
+            <!-- Publication & Year -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="publication">🏢 Publication</label>
+                    <input type="text" id="publication" name="publication" value="{{ book.publication }}" placeholder="Enter publication house (max 100 characters)" maxlength="100">
+                    <div class="char-count">
+                        <span id="publicationCount">0</span>/100 characters
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="year">📅 Year</label>
+                    <input type="number" id="year" name="year" value="{{ book.year }}" min="1800" max="2025" placeholder="Enter year (1800-2025)" maxlength="4">
+                    <div class="char-count">4 digits maximum</div>
+                </div>
+            </div>
+
+            <!-- Genre & Shelf -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="genre">🎭 Genre <span class="text-danger">*</span></label>
+                    <input type="text" id="genre" name="genre_name" value="{{ book.genre_name }}" placeholder="Enter genre (max 30 characters)" required maxlength="30" list="genreList">
+                    <div class="char-count">
+                        <span id="genreCount">0</span>/30 characters
+                    </div>
+                    <datalist id="genreList">
+                        {% for genre in genres %}
+                            <option value="{{ genre['genre_name'] }}">
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <div class="form-group">
+                    <label for="shelf">📚 Shelf <span class="text-danger">*</span></label>
+                    <input type="text" id="shelf" name="shelf" value="{{ book.shelf_name }}" placeholder="Enter shelf (e.g. Fic A1 R1, max 20 characters)" list="shelfList" required maxlength="20">
+                    <div class="char-count">
+                        <span id="shelfCount">0</span>/20 characters
+                    </div>
+                    <datalist id="shelfList">
+                        {% for shelf in shelves %}
+                            <option value="{{ shelf.shelf_name }}">{{ shelf.shelf_name }}</option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+            </div>
+
+            <!-- Copies & Amount -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="copies">📦 Copies <span class="text-danger">*</span></label>
+                    <input type="number" id="copies" name="copies" value="{{ book.copies }}" placeholder="Enter number of copies (1-10)" min="1" max="10" required maxlength="2">
+                    <div class="char-count">Maximum 10 copies</div>
+                </div>
+                <div class="form-group">
+                    <label for="amount">💰 Amount (₹)</label>
+                    <input type="text" id="amount" name="amount" value="{{ book.amount }}" placeholder="Enter amount (max ₹1000)" maxlength="4">
+                    <div class="char-count">
+                        <span id="amountCount">0</span>/4 digits (max ₹1000)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+                <label for="description">📝 Description <span class="text-danger">*</span></label>
+                <textarea id="description" name="description" rows="3" placeholder="Enter description (max 500 characters)" required maxlength="500">{{ book.description }}</textarea>
+                <div class="char-count">
+                    <span id="descriptionCount">0</span>/500 characters
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="form-actions" style="display:flex; gap:15px; flex-wrap:wrap; justify-content:center; margin-top:25px;">
+                <a href="{{ url_for('manage_books') }}" class="btn btn-outline-primary">❌ Cancel</a>
+                <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// ---------------- Full Validation (same as Add Book) ----------------
+const editBookBtn = document.querySelector(".btn-primary");
+const inputs = {
+    bookName: document.getElementById("book_name"),
+    author: document.getElementById("author"),
+    publication: document.getElementById("publication"),
+    year: document.getElementById("year"),
+    amount: document.getElementById("amount"),
+    copies: document.getElementById("copies"),
+    genre: document.getElementById("genre"),
+    shelf: document.getElementById("shelf"),
+    description: document.getElementById("description")
+};
+
+const counts = {
+    bookName: document.getElementById("bookNameCount"),
+    author: document.getElementById("authorCount"),
+    publication: document.getElementById("publicationCount"),
+    genre: document.getElementById("genreCount"),
+    shelf: document.getElementById("shelfCount"),
+    amount: document.getElementById("amountCount"),
+    description: document.getElementById("descriptionCount")
+};
+
+// Error div creation helper
+function createErrorDiv(input) {
+    const div = document.createElement("div");
+    div.classList.add("realtime-error");
+    div.style.color = "red";
+    div.style.fontSize = "13px";
+    div.style.marginTop = "5px";
+    div.style.display = "none";
+    input.parentNode.appendChild(div);
+    return div;
+}
+
+const errors = {};
+for (const key in inputs) errors[key] = createErrorDiv(inputs[key]);
+
+// Character count updater
+function updateCounts() {
+    counts.bookName.textContent = inputs.bookName.value.length;
+    counts.author.textContent = inputs.author.value.length;
+    counts.publication.textContent = inputs.publication.value.length;
+    counts.genre.textContent = inputs.genre.value.length;
+    counts.shelf.textContent = inputs.shelf.value.length;
+    counts.amount.textContent = inputs.amount.value.length;
+    counts.description.textContent = inputs.description.value.length;
+}
+
+// Validation functions
+function validateBookName() {
+    const v = inputs.bookName.value.trim();
+    const valid = v.length > 0 && v.length <= 100;
+    errors.bookName.style.display = valid ? "none" : "block";
+    errors.bookName.textContent = valid ? "" : "❌ Book name must be between 1-100 characters!";
+    return valid;
+}
+function validateAuthor() {
+    const valid = /^[A-Za-z\s]+$/.test(inputs.author.value);
+    errors.author.style.display = valid ? "none" : "block";
+    errors.author.textContent = valid ? "" : "❌ Only alphabets allowed in Author!";
+    return valid;
+}
+function validatePublication() {
+    const valid = /^[A-Za-z\s]*$/.test(inputs.publication.value);
+    errors.publication.style.display = valid ? "none" : "block";
+    errors.publication.textContent = valid ? "" : "❌ Only alphabets allowed in Publication!";
+    return valid;
+}
+function validateGenre() {
+    const valid = /^[A-Za-z\s]+$/.test(inputs.genre.value);
+    errors.genre.style.display = valid ? "none" : "block";
+    errors.genre.textContent = valid ? "" : "❌ Only alphabets allowed in Genre!";
+    return valid;
+}
+function validateShelf() {
+    const valid = /^[A-Za-z0-9\s]+$/.test(inputs.shelf.value);
+    errors.shelf.style.display = valid ? "none" : "block";
+    errors.shelf.textContent = valid ? "" : "❌ Only alphanumeric characters allowed in Shelf!";
+    return valid;
+}
+function validateYear() {
+    const v = parseInt(inputs.year.value);
+    const valid = !isNaN(v) && v >= 1800 && v <= 2025;
+    errors.year.style.display = valid ? "none" : "block";
+    errors.year.textContent = valid ? "" : "❌ Year must be between 1800 and 2025!";
+    return valid;
+}
+function validateAmount() {
+    const v = inputs.amount.value;
+    const valid = v === "" || /^[0-9]+$/.test(v);
+    const limit = v === "" || parseInt(v) <= 1000;
+    errors.amount.style.display = (valid && limit) ? "none" : "block";
+    if (!valid) errors.amount.textContent = "❌ Only numbers allowed in Amount!";
+    else if (!limit) errors.amount.textContent = "❌ Amount cannot exceed ₹1000!";
+    else errors.amount.textContent = "";
+    return valid && limit;
+}
+function validateCopies() {
+    const v = parseInt(inputs.copies.value);
+    const valid = !isNaN(v) && v >= 1 && v <= 10;
+    errors.copies.style.display = valid ? "none" : "block";
+    errors.copies.textContent = valid ? "" : "❌ Copies must be between 1 and 10!";
+    return valid;
+}
+function validateDescription() {
+    const valid = inputs.description.value.length <= 500;
+    errors.description.style.display = valid ? "none" : "block";
+    errors.description.textContent = valid ? "" : "❌ Description must be 500 characters or less!";
+    return valid;
+}
+
+// Check all
+function checkAll() {
+    const ok = validateBookName() && validateAuthor() && validatePublication() &&
+               validateGenre() && validateShelf() && validateYear() &&
+               validateAmount() && validateCopies() && validateDescription();
+    editBookBtn.disabled = !ok;
+    editBookBtn.style.opacity = ok ? "1" : "0.6";
+    editBookBtn.style.cursor = ok ? "pointer" : "not-allowed";
+}
+
+// Input restrictions + listeners
+Object.values(inputs).forEach(i => {
+    i.addEventListener("input", () => {
+        updateCounts();
+        checkAll();
+    });
+});
+inputs.author.addEventListener("input", () => { inputs.author.value = inputs.author.value.replace(/[^A-Za-z\s]/g, ''); });
+inputs.publication.addEventListener("input", () => { inputs.publication.value = inputs.publication.value.replace(/[^A-Za-z\s]/g, ''); });
+inputs.genre.addEventListener("input", () => { inputs.genre.value = inputs.genre.value.replace(/[^A-Za-z\s]/g, ''); });
+inputs.year.addEventListener("input", () => {
+    if (inputs.year.value.length > 4) inputs.year.value = inputs.year.value.slice(0, 4);
+});
+inputs.amount.addEventListener("input", () => {
+    inputs.amount.value = inputs.amount.value.replace(/[^0-9]/g, '');
+    if (parseInt(inputs.amount.value) > 1000) inputs.amount.value = '1000';
+    if (inputs.amount.value.length > 4) inputs.amount.value = inputs.amount.value.slice(0, 4);
+});
+inputs.copies.addEventListener("input", () => {
+    if (inputs.copies.value.length > 2) inputs.copies.value = inputs.copies.value.slice(0, 2);
+    if (parseInt(inputs.copies.value) > 10) inputs.copies.value = '10';
+});
+
+// Init counts & validation
+updateCounts();
+checkAll();
+
+// Form submit safety
+document.getElementById("editBookForm").addEventListener("submit", e => {
+    if (editBookBtn.disabled) {
+        e.preventDefault();
+        alert("❌ Please correct the highlighted errors before submitting!");
+    }
+});
+</script>
+
+<style>
+.content-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0;
+}
+.form-container {
+    width: 70%;
+    background: #fff;
+    padding: 40px 50px;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    margin: 0 auto;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+.form-row { display: flex; gap: 20px; }
+.form-group input,
+.form-group textarea {
+    padding: 10px 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: 2px solid #007bff;
+    border-color: #007bff;
+}
+.btn-primary {
+    background: #355b81;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: 0.3s;
+}
+.btn-primary:hover { background: #27486a; }
+.btn-outline-primary {
+    background: #fff;
+    color: #355b81;
+    border: 2px solid #355b81;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.btn-outline-primary:hover {
+    background: #355b81;
+    color: #fff;
+}
+.section-title {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 25px;
+    color: #333;
+}
+.char-count {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+    text-align: right;
+}
+.char-count span { font-weight: bold; }
+.realtime-error {
+    color: red;
+    font-size: 13px;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends 'admin_dashboard.html' %}
+
+{% block title %}Confirm Borrow Details{% endblock %}
+
+{% block content %}
+<h2 style="text-align:center;">Confirm Borrow</h2>
+
+<form method="POST" action="{{ url_for('finalize_borrow') }}" id="borrowForm">
+  <table class="borrow-table" style="width: 80%; margin: auto; border-collapse: collapse;">
+    <tr>
+      <th>Book ID</th>
+      <th>Book Name</th>
+      <th>Author</th>
+      <th>Amount (₹)</th>
+    </tr>
+    {% for book in selected_books %}
+    <tr>
+      <td>{{ book.book_id }}</td>
+      <td>{{ book.book_name }}</td>
+      <td>{{ book.author }}</td>
+      <td class="amount">{{ book.amount }}</td>
+    </tr>
+    <input type="hidden" name="book_ids" value="{{ book.book_id }}">
+    <input type="hidden" name="amounts" value="{{ book.amount }}">
+    {% endfor %}
+  </table>
+
+  <div style="width: 80%; margin: 20px auto; display: flex; justify-content: space-between; flex-wrap: wrap;">
+    <label>Issue Date:
+      <input type="date" name="issue_date" id="issue_date" required readonly style="background:#f3f3f3;">
+    </label>
+    <label>Duration (days):
+      <input type="number" name="duration" id="duration" required min="1" value="7">
+    </label>
+    <label>Return Date:
+      <input type="text" id="return_date" readonly style="background:#f3f3f3;">
+    </label>
+  </div>
+
+  <!-- Summary Box -->
+  <div id="summary" 
+       style="width: 80%; margin: 20px auto; background: #f8f9fa; padding: 15px; border-radius: 10px; 
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 16px;">
+    <p><strong>Total Book Amount (for all books × days):</strong> ₹<span id="book_total">0</span></p>
+    <p><strong>Fine (if duration > 30 days):</strong> ₹<span id="fine">0</span></p>
+    <hr>
+    <p style="font-size:18px;"><strong>Grand Total:</strong> ₹<span id="grand_total">0</span></p>
+  </div>
+
+  <div style="text-align:center; margin-top:20px;">
+    <button type="submit" class="btn btn-primary">Finalize Borrow</button>
+  </div>
+</form>
+
+<!-- JS: Calculate return date, total, fine -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Set today's date as the only available date
+  const today = new Date().toISOString().split('T')[0];
+  const issueDateInput = document.getElementById('issue_date');
+  
+  // Set today's date and make it readonly
+  issueDateInput.value = today;
+  issueDateInput.setAttribute('readonly', 'true');
+  
+  // Disable manual input via keyboard
+  issueDateInput.addEventListener('keydown', function(e) {
+    e.preventDefault();
+  });
+  
+  // Initial calculation
+  updateCalculations();
+});
+
+function updateCalculations() {
+  const issueDate = document.getElementById("issue_date").value;
+  const duration = parseInt(document.getElementById("duration").value) || 0;
+  const amountElements = document.querySelectorAll(".amount");
+
+  if (issueDate && duration > 0) {
+    const date = new Date(issueDate);
+    date.setDate(date.getDate() + duration);
+    document.getElementById("return_date").value = date.toISOString().split("T")[0];
+  }
+
+  let bookTotal = 0;
+  amountElements.forEach((amt) => {
+    const value = parseFloat(amt.textContent);
+    if (!isNaN(value)) bookTotal += value * duration;
+  });
+
+  const finePerDay = 5;
+  const extraDays = duration > 30 ? duration - 30 : 0;
+  const fine = extraDays * finePerDay;
+
+  const grandTotal = bookTotal + fine;
+
+  document.getElementById("book_total").textContent = bookTotal.toFixed(2);
+  document.getElementById("fine").textContent = fine.toFixed(2);
+  document.getElementById("grand_total").textContent = grandTotal.toFixed(2);
+}
+
+document.getElementById("duration").addEventListener("input", updateCalculations);
+
+// Prevent any changes to issue date
+document.getElementById("issue_date").addEventListener("change", function(e) {
+  // Reset to today if somehow changed
+  const today = new Date().toISOString().split('T')[0];
+  this.value = today;
+  updateCalculations();
+});
+
+// Also prevent context menu and right-click on date field
+document.getElementById("issue_date").addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+});
+</script>
+
+<style>
+/* Style for the date input to make it clear it's not editable */
+#issue_date {
+  background-color: #f8f9fa !important;
+  border: 1px solid #ced4da;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.borrow-table {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.borrow-table th, .borrow-table td {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+}
+
+.borrow-table th {
+  background-color: #355b81;
+  color: white;
+  font-weight: 600;
+}
+
+.borrow-table tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.borrow-table tr:hover {
+  background-color: #e9ecef;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-weight: 600;
+  color: #355b81;
+}
+
+input[type="date"], input[type="number"], input[type="text"] {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+input[type="date"]:focus, input[type="number"]:focus {
+  outline: 2px solid #355b81;
+  border-color: #355b81;
+}
+
+.btn-primary {
+  background: #355b81;
+  color: #fff;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.btn-primary:hover {
+  background: #27486a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}

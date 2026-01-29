@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Admin Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #F8F9FA; }
+
+        /* Navbar - FIXED */
+        .navbar {
+            width: 100%; 
+            height: 60px; 
+            background: #1a2a3a;
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            z-index: 1000;
+            display: flex; 
+            align-items: center; 
+            padding: 0 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+            color: white;
+        }
+        .navbar h1 { 
+            font-size: 20px; 
+            font-weight: 600; 
+            flex-grow: 1;
+            position: relative;
+            top: 1px;
+        }
+        .navbar .user-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 25px;
+            margin-right: 20px;
+        }
+        .navbar .user-info a { 
+            color: white; 
+            text-decoration: none; 
+            font-weight: 600;
+            transition: all 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 6px;
+        }
+        .navbar .user-info a:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Sidebar - FIXED */
+        .sidebar {
+            width: 220px; 
+            background: #1a2a3a; /* matched with navbar */
+            height: calc(100vh - 60px);
+            position: fixed; 
+            top: 60px; 
+            left: 0; 
+            padding-top: 20px;
+            color: white; 
+            box-shadow: 2px 0px 6px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            z-index: 999;
+        }
+
+        /* remove line between navbar & sidebar */
+        .navbar::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 220px;
+            height: 0;
+            background: #1a2a3a;
+        }
+
+        .sidebar h2 { text-align: center; color: #f1f1f1; margin-bottom: 20px; font-size: 18px; }
+        
+        /* Overview link - same style as nav-group labels */
+        .sidebar .overview-link {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            padding: 12px 20px; 
+            margin: 5px 10px; 
+            cursor: pointer;
+            background: #cccfd3; 
+            border-radius: 6px; 
+            transition: 0.3s;
+            font-size: 14px; 
+            font-weight: bold; 
+            user-select: none;
+            color: rgb(31, 30, 30);
+            text-decoration: none;
+        }
+        .sidebar .overview-link:hover {
+            background: #3d5266;
+            color: white;
+        }
+
+        /* Regular sidebar links */
+        .sidebar a {
+            display: block; 
+            color: #ddd; 
+            padding: 12px 20px;
+            text-decoration: none; 
+            transition: 0.3s; 
+            margin: 5px 10px;
+            border-radius: 6px; 
+            font-size: 14px;
+        }
+        .sidebar a:hover { 
+            background: #a9aaaa; 
+            color: white; 
+        }
+
+        /* Accordion */
+        .nav-group { margin: 10px 0; }
+        .nav-group input[type="checkbox"] { display: none; }
+        .nav-group label {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            padding: 12px 20px; 
+            margin: 5px 10px; 
+            cursor: pointer;
+            background: #cccfd3; 
+            border-radius: 6px; 
+            transition: 0.3s;
+            font-size: 14px; 
+            font-weight: bold; 
+            user-select: none;
+            color: rgb(31, 30, 30);
+        }
+        .nav-group label:hover { 
+            background: #3d5266; 
+            color: white;
+        }
+        .nav-group label::after {
+            content: '\f078'; 
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900; 
+            font-size: 12px; 
+            transition: transform 0.3s;
+        }
+        .nav-group input[type="checkbox"]:checked + label::after { 
+            transform: rotate(180deg); 
+        }
+        .nav-links {
+            max-height: 0; 
+            overflow: hidden; 
+            transition: max-height 0.4s ease-out;
+            padding-left: 10px;
+        }
+        .nav-group input[type="checkbox"]:checked ~ .nav-links { 
+            max-height: 500px; 
+            transition: max-height 0.4s ease-in; 
+        }
+        .nav-links a { 
+            padding: 10px 20px; 
+            font-size: 14px; 
+            margin: 2px 0; 
+        }
+
+        /* Low Stock */
+        .low-stock-alert {
+            background-color: #fff3cd; 
+            border: 1px solid #ffeeba; 
+            color: #856404;
+            padding: 15px; 
+            border-radius: 8px; 
+            width: 90%; 
+            margin: 10px auto 20px auto; 
+            font-size: 13px;
+        }
+        .low-stock-alert ul { 
+            margin-top: 5px; 
+            padding-left: 20px; 
+        }
+        .low-stock-alert li { 
+            margin: 5px 0; 
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 220px; 
+            margin-top: 60px; 
+            padding: 30px;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* Flash Messages */
+        .flash-messages {
+            position: fixed; 
+            top: 70px; 
+            left: 240px; 
+            z-index: 9999;
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            max-width: 300px;
+        }
+        .flash-message {
+            padding: 12px 20px; 
+            border-radius: 6px; 
+            color: rgb(7, 6, 12); 
+            font-size: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2); 
+            animation: fadeout 4s forwards;
+        }
+        .flash-message.success { background-color: #28a745; color: white; }
+        .flash-message.error { background-color: #dc3545; color: white; }
+        .flash-message.warning { background-color: #ffc107; color: #333; }
+        .flash-message.info { background-color: #17a2b8; color: white; }
+
+        @keyframes fadeout {
+            0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 180px; }
+            .main-content { margin-left: 180px; }
+            .navbar h1 { font-size: 16px; }
+            .navbar .user-info { gap: 15px; margin-right: 10px; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <div class="navbar">
+        <h1>📚 The Knowledge Hub Library - Admin Dashboard</h1>
+        <div class="user-info">
+            <a href="{{ url_for('admin_settings') }}">⚙️ Settings</a>
+            <a href="{{ url_for('logout') }}"> Logout</a>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div style="text-align:center; padding:10px 0; margin:0 15px 15px 15px; background:#32475b; border-radius:8px;">
+            <p style="margin:0; color:#fff; font-weight:bold; font-size:15px;">
+                👋 Welcome, <span style="color:#ffda79;">{{ session.get('admin_name', 'Admin') }}</span>
+            </p>
+        </div>
+
+        {% if low_stock_books and low_stock_books|length > 0 %}
+        <div class="low-stock-alert">
+            <strong>⚠️ Low Stock Alert!</strong>
+            <ul>
+                {% for b in low_stock_books %}
+                    {% if b[1] == 0 %}
+                        <li><b>{{ b[0] }}</b> — <span style="color:red;">Out of Stock</span></li>
+                    {% else %}
+                        <li><b>{{ b[0] }}</b> — <span style="color:orange;">Only {{ b[1] }} left</span></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+       
+        <!-- Updated Overview link with same style as book management -->
+        <a href="{{ url_for('overview') }}" class="overview-link">
+            <span>📊 Overview</span>
+        </a>
+
+        <div class="nav-group">
+            <input type="checkbox" id="book-management">
+            <label for="book-management">📚 Book Management</label>
+            <div class="nav-links">
+                <a href="{{ url_for('add_book') }}">➕ Add Books</a>
+                <a href="{{ url_for('view_books') }}">📖 View Books</a>
+                <a href="{{ url_for('manage_books') }}">⚙️ Manage Books</a>
+            </div>
+        </div>
+
+        <div class="nav-group">
+            <input type="checkbox" id="borrower-management">
+            <label for="borrower-management">👥 Borrower Management</label>
+            <div class="nav-links">
+                <a href="{{ url_for('member_records') }}">➕ Add Member</a>
+                <a href="{{ url_for('all_books') }}">📘 All Books</a>
+                <a href="{{ url_for('borrow_records') }}">📊 Borrow Records</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-messages">
+              {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message|safe }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}
+        {% endblock %}
+    </div>
+
+</body>
+</html>

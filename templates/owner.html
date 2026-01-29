@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}The Knowledge Hub Library{% endblock %}</title>
+    <style>
+    body { 
+        margin: 0; 
+        font-family: Arial, sans-serif; 
+        display: flex; 
+        background: #F8F9FA; 
+    }
+    .sidebar {
+        width: 220px; 
+        background: #2E4057; 
+        height: 100vh;             
+        position: fixed;           
+        top: 0; 
+        left: 0;
+        padding-top: 30px; 
+        color: white; 
+        box-shadow: 2px 0px 6px rgba(0,0,0,0.1);
+    }
+    .sidebar h2 { 
+        text-align: center; 
+        color: #f1f1f1; 
+    }
+    .sidebar a {
+        display: block; 
+        color: #ddd; 
+        padding: 12px 20px; 
+        text-decoration: none;
+        transition: 0.3s; 
+        margin: 5px 0; 
+        border-radius: 6px;
+    }
+    .sidebar a:hover { 
+        background: #395254; 
+        color: white; 
+    }
+    .main-content {
+        margin-left: 220px;   /* push content right */
+        padding: 20px; 
+        width: calc(100% - 220px);
+    }
+</style>
+
+</head>
+<body>
+    <div class="sidebar">
+        <h2>📚 The Knowledge Hub Library</h2>
+       
+        <a href="{{ url_for('add_staff') }}">➕ Add Staff</a>
+        <a href="{{ url_for('view_staff') }}">👨‍💼 View Staff</a>
+    </div>
+
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

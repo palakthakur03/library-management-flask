@@ -1,0 +1,120 @@
+{% extends 'owner.html' %}
+{% block title %}View Staff - The Knowledge Hub Library{% endblock %}
+
+{% block content %}
+<style>
+  body {
+    font-family: Arial;
+    background: #f9f9f9;
+    text-align: center;
+  }
+  h2 {
+    margin: 20px 0;
+  }
+  table {
+    width: 70%;
+    margin: auto;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  th,
+  td {
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: center;
+  }
+  th {
+    background: #2fa2cc;
+    color: white;
+  }
+  tr:nth-child(even) {
+    background: #f2f2f2;
+  }
+</style>
+
+<h2>👨‍💼 Staff Members</h2>
+
+<!-- 🔍 Live Search Input -->
+<input
+  type="text"
+  id="staffSearch"
+  placeholder="🔍 Search by name, phone or ID"
+  style="
+    padding: 10px;
+    width: 300px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-bottom: 20px;
+  "
+/>
+
+<table>
+  <thead>
+    <tr>
+      <th>Admin ID</th>
+      <th>Full Name</th>
+      <th>Phone</th>
+      <th>Password</th>
+    </tr>
+  </thead>
+
+  <tbody id="staffTableBody">
+    {% for staff in staff_data %}
+    <tr>
+      <td>{{ staff['admin_id'] }}</td>
+      <td>{{ staff['name'] }}</td>
+      <td>{{ staff['phone'] }}</td>
+      <td>{{ staff['password'] }}</td>
+    </tr>
+    {% endfor %}
+
+    {% if staff_data|length == 0 %}
+    <tr>
+      <td colspan="4" style="padding: 20px; color: #666">
+        No staff found 👀
+      </td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+
+<!-- 🔁 Live Search Script -->
+<script>
+  const searchInput = document.getElementById("staffSearch");
+  const tableBody = document.getElementById("staffTableBody");
+
+  searchInput.addEventListener("keyup", function () {
+    const query = this.value;
+
+    fetch(`/search_staff?q=${query}`)
+      .then((response) => response.json())
+      .then((data) => {
+        tableBody.innerHTML = "";
+
+        if (data.length === 0) {
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="4" style="padding:20px; color:#666;">
+                No staff found 👀
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        data.forEach((staff) => {
+          tableBody.innerHTML += `
+            <tr>
+              <td>${staff.admin_id}</td>
+              <td>${staff.name}</td>
+              <td>${staff.phone}</td>
+              <td>${staff.password}</td>
+            </tr>
+          `;
+        });
+      });
+  });
+</script>
+
+{% endblock %}

@@ -1,0 +1,10 @@
+{
+    "params": {
+    "local_server":"True",
+    "user":"root",
+    "pass": "",
+    "host":"localhost",
+    "database": "library_management",
+    "cclass": "DictCursor"
+}
+}

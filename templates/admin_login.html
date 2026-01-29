@@ -1,0 +1,63 @@
+{% block title %}{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:center; align-items:center; height:100vh; background:linear-gradient(135deg,#596972,#2c4052);">
+
+    <div style="
+        background:white; 
+        padding:50px 40px; 
+        border-radius:16px; 
+        width:100%; 
+        max-width:420px; 
+        box-shadow:0px 10px 30px rgba(0,0,0,0.2);
+        text-align:center;">
+
+        <!-- Sidebar -->
+<div class="sidebar">
+        
+        <!-- Heading -->
+        <h2 style="font-family: 'Segoe UI', sans-serif; font-size:30px; font-weight:700; color:#2c4052; margin-bottom:10px;">
+            📚 The Knowledge Hub Library
+        </h2>
+        <h3 style="font-size:22px; color:#2c4052; margin-bottom:25px;">Admin Login</h3>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div style="background:#f8d7da; color:#721c24; padding:10px; border-radius:8px; margin-bottom:15px; font-size:14px;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Login Form -->
+        <form method="POST" style="text-align:left;">
+            <label style="font-size:14px; font-weight:600; color:#333;">📱 Phone Number</label>
+            <input type="text" name="phone" placeholder="Enter Phone Number" required
+                   pattern="[6-9]\d{9}"
+                   title="Enter a valid 10-digit Indian phone number"
+                   style="width:100%; padding:14px; margin:8px 0 18px 0; border-radius:8px; border:1px solid #ccc; font-size:15px;">
+
+            <label style="font-size:14px; font-weight:600; color:#333;">🔒 Password</label>
+            <input type="password" name="password" placeholder="Enter Password" required
+                   autocomplete="off"
+                   style="width:100%; padding:14px; margin:8px 0 10px 0; border-radius:8px; border:1px solid #ccc; font-size:15px;">
+
+            <button type="submit"
+                    style="width:100%; padding:14px; background:linear-gradient(135deg,#363d44,#41677e); 
+                           color:white; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;
+                           transition:0.3s;">
+                🚀 Login
+            </button>
+        </form>
+
+        <!-- Forgot / Change Password Links -->
+        <div style="margin-top:20px; font-size:14px;">
+            <a href="{{ url_for('forgot_password') }}" style="color:#2c4052; text-decoration:none;">Forgot Password?</a><br>
+            <!-- <a href="{{ url_for('change_password') }}" style="color:#2e8bc0; text-decoration:none;">Change Password</a> -->
+        </div>
+    </div>
+</div>
+{% endblock %}
