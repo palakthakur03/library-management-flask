@@ -8,6 +8,9 @@ from datetime import date, datetime, timedelta
 import os
 import smtplib
 from email.mime.text import MIMEText
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # ---------------- EMAIL OTP ----------------
 def send_otp_email(receiver_email, otp):
@@ -51,13 +54,15 @@ app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key')
 # ---------------- MYSQL (PyMySQL) ----------------
 def get_db_connection():
     return pymysql.connect(
-        host=os.getenv('MYSQLHOST', 'localhost'),
-        user=os.getenv('MYSQLUSER', 'root'),
-        password=os.getenv('MYSQLPASSWORD', ''),
-        database=os.getenv('MYSQLDATABASE', 'library_management'),
-        port=int(os.getenv('MYSQLPORT', 3306)),
-        cursorclass=pymysql.cursors.DictCursor
+        host="maglev.proxy.rlwy.net",
+        user="root",
+        password="xyGQQjuqWZxRndtFQxRYTulRwcHtQWue",
+        database="railway",
+        port=43539,
+        ssl={"ssl": {}},
+        cursorclass=pymysql.cursors.DictCursor  # 👈 THIS LINE
     )
+
 
 
 # ---------------- FILE UPLOAD ----------------
@@ -92,6 +97,17 @@ def owner():
     if 'admin_id' not in session:
         return redirect(url_for('admin_login'))
     return render_template('overview.html')
+
+@app.route("/db-test")
+def db_test():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) AS total FROM books")
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    return f"Books in Railway DB: {result['total']}"
+
 
 # ========== STAFF ==========
 @app.route('/add_staff', methods=['GET', 'POST'])
