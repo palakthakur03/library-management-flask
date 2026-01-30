@@ -11,6 +11,18 @@ from email.mime.text import MIMEText
 from dotenv import load_dotenv
 load_dotenv()
 
+def get_db_connection():
+    return pymysql.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        port=int(os.getenv("DB_PORT")),
+        ssl={"ssl": {}},
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
+
 
 # ---------------- EMAIL OTP ----------------
 def send_otp_email(receiver_email, otp):
@@ -52,16 +64,7 @@ app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key')
 
 
 # ---------------- MYSQL (PyMySQL) ----------------
-def get_db_connection():
-    return pymysql.connect(
-        host="maglev.proxy.rlwy.net",
-        user="root",
-        password="xyGQQjuqWZxRndtFQxRYTulRwcHtQWue",
-        database="railway",
-        port=43539,
-        ssl={"ssl": {}},
-        cursorclass=pymysql.cursors.DictCursor  # 👈 THIS LINE
-    )
+
 
 
 
